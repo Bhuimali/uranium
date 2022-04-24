@@ -1,20 +1,74 @@
 const User = require("../models/userModel");
+const jwt = require("jsonwebtoken");
 
-const addUser = async (req, res) => {
 
-  if(req.headers.isFreeAppUser == 'true'){
-    let getUserData = req.body;
-    getUserData.isFreeAppUser = true;
+const createUser = async function (req, res) {
+  let getUserData = req.body;
+  let showData = await User.create(getUserData);
+  res.send({ status: true, data: showData });
+};
 
-    let showData = await User.create(getUserData);
-    res.send({data: showData, status: true});
-  }else{
-    let getUserData = req.body;
+const loginUser = async function (req, res) {
+  let email = req.body.email;
+  let password = req.body.password;
 
-    let showData = await User.create(getUserData);
-    res.send({data: showData, status: true});
+  let user = await User.findOne({ emailId: email, password: password });
+  if (!user){
+    return res.send({status: false, msg: "Email Id or password is not correct",});
+
   }
+
+  let token = jwt.sign({ userId: user._id.toString()}, "FunctionUp-Uranium");
+  res.setHeader("x-auth-token", token);
+  res.send({ status: true, data: token });
+};
+
+const getUserData = async function (req, res) {
+  let userId = req.params.userId;
+
+  let userData = await User.findById(userId);
+  if (!userData){
+    return res.send({ status: false, msg: "No such user exists" });
+  }
+
+  res.send({ status: true, data: userData });
+};
+
+const updateUser = async function (req, res) {
+  let userId = req.params.userId;
+  let user = await User.findById(userId);
   
+  if (!user) {
+    return res.send("No such user exists");
+  }
+
+  let userData = req.body;
+  let updatedUser = await User.findOneAndUpdate(
+    { _id: userId }, 
+    { $set: userData},
+    { new: true},
+    );
+  res.send({ status: true, data: updatedUser });
+};
+
+const deleteUser = async function(req, res){
+  let userId = req.params.userId;
+  let getUserId = await User.findById(userId)
+
+  if(!getUserId) {
+    return res.send("No such User exits");
+  }
+  let user = await User.findOneAndUpdate(
+    {_id: userId},
+    { $set: {isDeleted: true}},
+    { new: true}
+  )
+
+  res.send({status: true, data: user});
 }
 
-module.exports.addUser = addUser;
+module.exports.createUser = createUser;
+module.exports.getUserData = getUserData;
+module.exports.updateUser = updateUser;
+module.exports.loginUser = loginUser;
+module.exports.deleteUser = deleteUser;
